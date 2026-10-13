@@ -99,8 +99,7 @@ retriever to these examples.
 5. LangGraph uses an in-memory checkpointer keyed by the session ID while the
    process is running.
 
-The graph is illustrated in
-[`docs/langgraph_agent_architecture.png`](docs/langgraph_agent_architecture.png).
+![LangGraph agent architecture](docs/langgraph_agent_architecture.png)
 
 ## Project layout
 
