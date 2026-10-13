@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import uuid
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
 from langchain_openai import ChatOpenAI
 
 from schemas import SessionState
@@ -84,33 +84,29 @@ class DocumentAssistant:
                 self.session_storage_path,
                 f"{self.current_session.session_id}.json"
             )
-            session_dict = self.current_session.dict()
-
-            def serialize_datetime(obj):
-                if isinstance(obj, datetime):
-                    return obj.isoformat()
-                return obj
-
+            session_dict = self.current_session.model_dump(mode="json")
             with open(filepath, 'w') as f:
-                json.dump(session_dict, f, indent=2, default=serialize_datetime)
+                json.dump(session_dict, f, indent=2)
 
-    def _get_conversation_summary(self, config) -> str:
+    def _get_conversation_summary(self) -> str:
         if not self.current_session or not self.current_session.conversation_history:
             return "No previous conversation."
 
-        current_state = self.workflow.get_state(config).values
+        return self.current_session.conversation_history[-1].get(
+            "conversation_summary",
+            "No previous conversation.",
+        )
 
-        summary = current_state.get("conversation_summary", [])
-        return summary
-
-    def _get_conversation_history(self, config) -> List[BaseMessage]:
+    def _get_conversation_history(self) -> List[BaseMessage]:
         if not self.current_session or not self.current_session.conversation_history:
             return []
 
-        current_state = self.workflow.get_state(config).values
-
-        history = current_state.get("messages", [])
-        return history
+        serialized_messages = [
+            message
+            for turn in self.current_session.conversation_history
+            for message in turn.get("messages", [])
+        ]
+        return messages_from_dict(serialized_messages)
 
 
     def process_message(self, user_input: str) -> Dict[str, Any]:
@@ -129,12 +125,11 @@ class DocumentAssistant:
    
 
         initial_state: AgentState = {
-            "messages": [],
+            "messages": self._get_conversation_history(),
             "user_input": user_input,
             "intent": None,
             "next_step": "classify_intent",
-            "conversation_history": self.current_session.conversation_history,
-            "conversation_summary": self._get_conversation_summary(config),
+            "conversation_summary": self._get_conversation_summary(),
             "active_documents": self.current_session.document_context,
             "current_response": None,
             "tools_used": [],
@@ -148,19 +143,40 @@ class DocumentAssistant:
             final_state = self.workflow.invoke(initial_state, config=config)
             # Update session with new state
             if final_state.get("messages"):
+                prior_messages = initial_state["messages"]
+                final_messages = final_state["messages"]
+                prior_serialized = [message_to_dict(message) for message in prior_messages]
+                final_serialized = [message_to_dict(message) for message in final_messages]
 
-                self.current_session.conversation_history.append(final_state)
+                if final_serialized[:len(prior_serialized)] == prior_serialized:
+                    new_messages = final_messages[len(prior_messages):]
+                else:
+                    prior_set = {
+                        json.dumps(message, sort_keys=True)
+                        for message in prior_serialized
+                    }
+                    new_messages = [
+                        message
+                        for message, serialized in zip(final_messages, final_serialized)
+                        if json.dumps(serialized, sort_keys=True) not in prior_set
+                    ]
+
+                self.current_session.conversation_history.append({
+                    "messages": [message_to_dict(message) for message in new_messages],
+                    "conversation_summary": final_state.get("conversation_summary", ""),
+                    "active_documents": final_state.get("active_documents", []),
+                })
                 self.current_session.last_updated = datetime.now()
                 if final_state.get("active_documents"):
-                    self.current_session.document_context = list(set(
-                        self.current_session.document_context +
-                        final_state["active_documents"]
+                    self.current_session.document_context = list(dict.fromkeys(
+                        self.current_session.document_context
+                        + final_state["active_documents"]
                     ))
                 self._save_session()
             return {
                 "success": True,
                 "response": final_state.get("messages")[-1].content if final_state.get("messages") else None,
-                "intent": final_state.get("intent").dict() if final_state.get("intent") else None,
+                "intent": final_state.get("intent").model_dump() if final_state.get("intent") else None,
                 "tools_used": final_state.get("tools_used", []),
                 "sources": final_state.get("active_documents", []),
                 "actions_taken": final_state.get("actions_taken", []),

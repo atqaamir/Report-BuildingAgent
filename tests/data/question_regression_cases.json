@@ -1,0 +1,42 @@
+[
+  {
+    "name": "invoice lookup",
+    "question": "What is the total due on invoice INV-002?",
+    "intent": "qa",
+    "document_ids": ["INV-002"],
+    "expression": null,
+    "expected_result": null,
+    "expected_tools": ["document_reader"],
+    "expected_text": ["INV-002", "$69,300"]
+  },
+  {
+    "name": "contract summary",
+    "question": "Summarize contract CON-001.",
+    "intent": "summarization",
+    "document_ids": ["CON-001"],
+    "expression": null,
+    "expected_result": null,
+    "expected_tools": ["document_reader"],
+    "expected_text": ["CON-001", "12 months", "$180,000"]
+  },
+  {
+    "name": "basic arithmetic",
+    "question": "What is 1250 + 2450?",
+    "intent": "calculation",
+    "document_ids": [],
+    "expression": "1250 + 2450",
+    "expected_result": 3700,
+    "expected_tools": ["calculator"],
+    "expected_text": ["Result: 3700"]
+  },
+  {
+    "name": "invoice and claim total",
+    "question": "Add the total due on INV-002 and the claim amount on CLM-001.",
+    "intent": "calculation",
+    "document_ids": ["INV-002", "CLM-001"],
+    "expression": "69300 + 2450",
+    "expected_result": 71750,
+    "expected_tools": ["document_reader", "calculator"],
+    "expected_text": ["INV-002", "CLM-001", "Result: 71750"]
+  }
+]

@@ -130,8 +130,13 @@ python -m unittest discover -s tests -v
 
 The suite covers sample-document retrieval, schema defaults, calculator and
 document tools, and graph routing for Q&A, summarization, and calculation. It
-uses a deterministic fake model, so tests do not need an API key or network
-access.
+also runs the question cases in
+[`tests/data/question_regression_cases.json`](tests/data/question_regression_cases.json)
+and checks that session messages, summaries, and document references survive a
+save/restart/resume cycle. It uses a deterministic fake model, so tests do not
+need an API key or network access. The question suite verifies routing,
+retrieval evidence, and calculations; it does not assess live-model intent
+classification or generated answer quality.
 
 ### Manual smoke test
 
@@ -155,10 +160,9 @@ usage. The test suite does not make those calls.
 
 ## Known limitations
 
-- **Session save and resume need validation/fixes:** the assistant stores
-  LangChain message objects in its JSON session history, but its JSON encoder
-  only handles datetimes. Saving a completed turn can therefore fail, and the
-  in-memory LangGraph checkpointer itself does not survive a process restart.
+- **The LangGraph checkpointer is in memory:** the assistant restores saved
+  messages, summaries, and document references from its session JSON file after
+  a restart, but the checkpointer's internal state is not persistent.
 - **The retriever is a demonstration:** document search is keyword/metadata
   based over hard-coded examples, not semantic search over user-provided files.
 - **The CLI currently uses fixed model settings and a fixed API base URL.**
