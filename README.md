@@ -13,9 +13,13 @@ calculation agent.
 
 ## Requirements
 
-- Python 3.10 or later
+- Python 3.10 or later (Python 3.13 is recommended)
 - An API key accepted by the OpenAI-compatible endpoint configured in
   `src/assistant.py` (`https://openai.vocareum.com/v1`)
+
+Python 3.15 may require a C++ build toolchain to install a transitive
+dependency on Windows. Use Python 3.13 if installation fails while building
+`zstandard`.
 
 ## Setup
 
@@ -24,7 +28,7 @@ Run these commands from the `starter` directory.
 ### Windows PowerShell
 
 ```powershell
-python -m venv .venv
+py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
@@ -33,7 +37,7 @@ Copy-Item .env.example .env
 ### macOS or Linux
 
 ```bash
-python3 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
@@ -122,30 +126,46 @@ starter/
 
 ## Tests
 
-There is no automated test suite in the repository yet. The project has not
-been validated end to end against the configured language-model endpoint.
+Run the automated tests from the `starter` directory with the same Python
+environment used to install the requirements:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite covers sample-document retrieval, schema defaults, calculator and
+document tools, and graph routing for Q&A, summarization, and calculation. It
+uses a deterministic fake model, so tests do not need an API key or network
+access.
+
+### Manual smoke test
+
+To try the interactive app as a person would:
+
+1. Complete [Setup](#setup), add a valid `OPENAI_API_KEY` to `.env`, and run
+   `python main.py`.
+2. Press Enter at the user ID prompt.
+3. Enter `/docs` and confirm the five sample document IDs are listed.
+4. Ask `What is the total due on invoice INV-002?` and check that the answer
+   refers to `INV-002` and `$69,300`.
+5. Ask `Summarize contract CON-001.` and check that the response describes the
+   service agreement.
+6. Ask `What is 1250 + 2450?` and check that the result is `3700`.
+7. Ask `Find documents over $50,000.` and check that matching document IDs are
+   returned.
+8. Enter `/quit` to exit.
+
+Manual checks use the configured external model endpoint and may incur API
+usage. The test suite does not make those calls.
 
 ## Known limitations
 
-- **Intent classification needs a correction:** the classifier enables
-  `with_structured_output(UserIntent)` and then passes its result to a
-  `PydanticOutputParser`, which expects text rather than an already-parsed
-  model. This can stop requests before they reach an agent.
 - **Session save and resume need validation/fixes:** the assistant stores
   LangChain message objects in its JSON session history, but its JSON encoder
   only handles datetimes. Saving a completed turn can therefore fail, and the
   in-memory LangGraph checkpointer itself does not survive a process restart.
-- **Some tool and display paths are incomplete:** the document search tool's
-  `"all"` option can fall through to query-based search, and the CLI checks for
-  `active_documents` even though the assistant returns the list as `sources`.
-- **Some schema defaults need cleanup:** several list/dictionary fields use
-  default factories that return the `list` or `dict` type instead of an empty
-  value.
 - **The retriever is a demonstration:** document search is keyword/metadata
   based over hard-coded examples, not semantic search over user-provided files.
 - **The CLI currently uses fixed model settings and a fixed API base URL.**
   The corresponding optional values in `.env.example` are not wired to the
   entry point.
-- **No automated tests are included.** Add unit tests for retrieval, tools,
-  graph routing, and session persistence before extending or deploying the
-  application.

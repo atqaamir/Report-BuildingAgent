@@ -1,6 +1,6 @@
 from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any, Literal, TypedDict
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
@@ -9,14 +9,15 @@ class DocumentChunk(BaseModel):
     """Represents a chunk of document content"""
     doc_id: str = Field(description="Document identifier")
     content: str = Field(description="The actual text content")
-    metadata: Dict[str, Any] = Field(default_factory=lambda: dict, description="Additional metadata")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     relevance_score: float = Field(default=0.0, description="Relevance score for retrieval")
+
 
 class AnswerResponse(BaseModel):
     """Structured response for Q&A tasks"""
     question: str = Field(description="The original user question")
     answer: str = Field(description="The generated answer")
-    sources: List[str] = Field(default_factory=lambda: list, description="List of source document IDs used")
+    sources: List[str] = Field(default_factory=list, description="List of source document IDs used")
     confidence: float = Field(description="Confidence score between 0 and 1")
     timestamp: datetime = Field(default_factory=datetime.now)
 
@@ -26,7 +27,7 @@ class SummarizationResponse(BaseModel):
     original_length: int = Field(description="Length of original text")
     summary: str = Field(description="The generated summary")
     key_points: List[str] = Field(description="List of key points extracted")
-    document_ids: List[str] = Field(default_factory=lambda: list, description="Documents summarized")
+    document_ids: List[str] = Field(default_factory=list, description="Documents summarized")
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
@@ -57,7 +58,7 @@ class SessionState(BaseModel):
     """Session state"""
     session_id: str
     user_id: str
-    conversation_history: List[TypedDict] = Field(default_factory=lambda: list)
-    document_context: List[str] = Field(default_factory=lambda: list, description="Active document IDs")
+    conversation_history: List[Dict[str, Any]] = Field(default_factory=list)
+    document_context: List[str] = Field(default_factory=list, description="Active document IDs")
     created_at: datetime = Field(default_factory=datetime.now)
     last_updated: datetime = Field(default_factory=datetime.now)

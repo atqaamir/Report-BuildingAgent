@@ -116,6 +116,9 @@ class DocumentAssistant:
     def process_message(self, user_input: str) -> Dict[str, Any]:
         """Process a user message using the LangGraph workflow."""
 
+        if not self.current_session:
+            raise ValueError("No active session. Call start_session() first.")
+
         config = {
             "configurable": {
                 "thread_id": self.current_session.session_id,
@@ -125,8 +128,6 @@ class DocumentAssistant:
         }
    
 
-        if not self.current_session:
-            raise ValueError("No active session. Call start_session() first.")
         initial_state: AgentState = {
             "messages": [],
             "user_input": user_input,

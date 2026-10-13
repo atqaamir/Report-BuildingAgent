@@ -59,15 +59,13 @@ class ToolLogger:
             json.dump(self.logs, f, indent=2)
 
 
-# TODO: Implement the calculator tool using the @tool decorator.
-# This tool should safely evaluate mathematical expressions and log its usage.
-# Refer to README.md Task 4.1 for detailed implementation requirements.
 def create_calculator_tool(logger: ToolLogger):
     """
     Creates a calculator tool that safely evaluates mathematical expressions and logs its usage.
     """
     @tool
     def calculator(expression: str) -> str:
+        """Evaluate a basic arithmetic expression and log the result."""
         import re
         try:
             # Validate the expression for safety
@@ -130,10 +128,8 @@ def create_document_search_tool(retriever, logger: ToolLogger):
             # Handle different search types
             if search_type == "all":
                 results = retriever.retrieve_all()
-
-            if search_type == "keyword":
+            elif search_type == "keyword":
                 results = retriever.retrieve_by_keyword(query)
-
             elif search_type == "type" and doc_type:
                 results = retriever.retrieve_by_type(doc_type)
                 # If amount criteria also specified, filter further
@@ -145,7 +141,7 @@ def create_document_search_tool(retriever, logger: ToolLogger):
                     result_ids = {r.doc_id for r in amount_results}
                     results = [r for r in results if r.doc_id in result_ids]
 
-            elif search_type == "amount" or search_type == "amount_range":
+            elif search_type in ("amount", "amount_range"):
                 results = _handle_amount_search(
                     retriever, comparison, amount, min_amount, max_amount, query
                 )

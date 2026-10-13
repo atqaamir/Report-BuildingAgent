@@ -14,7 +14,7 @@ from schemas import (
     AnswerResponse, SummarizationResponse, CalculationResponse, UpdateMemoryResponse
 )
 from prompts import get_intent_classification_prompt, get_chat_prompt_template, MEMORY_SUMMARY_PROMPT
-from langgraph.checkpoint import InMemorySaver
+from langgraph.checkpoint.memory import InMemorySaver
 
 # TODO: The AgentState class is already implemented for you.  Study the
 # structure to understand how state flows through the LangGraph
@@ -254,9 +254,9 @@ def create_workflow(llm, tools):
         "classify_intent",
         should_continue,
         {
-            "qa": "qa_agent",
-            "summarization": "summarization_agent",
-            "calculation": "calculation_agent",
+            "qa_agent": "qa_agent",
+            "summarization_agent": "summarization_agent",
+            "calculation_agent": "calculation_agent",
             "end": END
         }
     )
