@@ -1,6 +1,6 @@
-# Report-BuildingAgent
+# DocDacity Intelligent Document Assistant
 
-Report-BuildingAgent is a command-line assistant that answers questions about a small set
+DocDacity is a command-line assistant that answers questions about a small set
 of sample financial and healthcare documents. It uses LangChain tools and a
 LangGraph workflow to route each request to a Q&A, summarization, or
 calculation agent.
