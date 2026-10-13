@@ -120,31 +120,6 @@ starter/
     └── tools.py             # Calculator, search, reader, and statistics tools
 ```
 
-## Tests
-
-There is no automated test suite in the repository yet. The project has not
-been validated end to end against the configured language-model endpoint.
-
-## Known limitations
-
-- **Intent classification needs a correction:** the classifier enables
-  `with_structured_output(UserIntent)` and then passes its result to a
-  `PydanticOutputParser`, which expects text rather than an already-parsed
-  model. This can stop requests before they reach an agent.
-- **Session save and resume need validation/fixes:** the assistant stores
-  LangChain message objects in its JSON session history, but its JSON encoder
-  only handles datetimes. Saving a completed turn can therefore fail, and the
-  in-memory LangGraph checkpointer itself does not survive a process restart.
-- **Some tool and display paths are incomplete:** the document search tool's
-  `"all"` option can fall through to query-based search, and the CLI checks for
-  `active_documents` even though the assistant returns the list as `sources`.
-- **Some schema defaults need cleanup:** several list/dictionary fields use
-  default factories that return the `list` or `dict` type instead of an empty
-  value.
-- **The retriever is a demonstration:** document search is keyword/metadata
-  based over hard-coded examples, not semantic search over user-provided files.
-- **The CLI currently uses fixed model settings and a fixed API base URL.**
-  The corresponding optional values in `.env.example` are not wired to the
   entry point.
 - **No automated tests are included.** Add unit tests for retrieval, tools,
   graph routing, and session persistence before extending or deploying the
