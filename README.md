@@ -1,248 +1,152 @@
-# Document Assistant Project Instructions
+# DocDacity Document Assistant
 
-Welcome to the Document Assistant project! This project will help you build a sophisticated document processing system using LangChain and LangGraph. You'll create an AI assistant that can answer questions, summarize documents, and perform calculations on financial and healthcare documents.
+DocDacity is a command-line assistant that answers questions about a small set
+of sample financial and healthcare documents. It uses LangChain tools and a
+LangGraph workflow to route each request to a Q&A, summarization, or
+calculation agent.
 
-## Project Overview
+> **Project status:** This is a sample application, not a production document
+> platform. The included retriever searches five documents defined in code; it
+> does not ingest arbitrary files or use a vector database. See
+> [Known limitations](#known-limitations) before relying on session persistence
+> or running the full workflow.
 
-This document assistant uses a multi-agent architecture with LangGraph to handle different types of user requests:
-- **Q&A Agent**: Answers specific questions about document content
-- **Summarization Agent**: Creates summaries and extracts key points from documents
-- **Calculation Agent**: Performs mathematical operations on document data
+## Requirements
 
-### Prerequisites
-- Python 3.9+
-- OpenAI API key
+- Python 3.10 or later
+- An API key accepted by the OpenAI-compatible endpoint configured in
+  `src/assistant.py` (`https://openai.vocareum.com/v1`)
 
-### Installation
+## Setup
 
-1. Clone the repository:
-```bash
-cd <repository_path>
+Run these commands from the `starter` directory.
+
+### Windows PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+### macOS or Linux
 
-3. Install dependencies:
 ```bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file:
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 cp .env.example .env
-# Edit .env and add your OpenAI API key
 ```
 
-### Running the Assistant
+Edit `.env` and replace `your_openai_api_key_here` with your own API key.
+Keep `.env` private; do not commit it or paste its contents into issues or
+messages. The repository's `.gitignore` excludes it.
+
+The current command-line entry point reads `OPENAI_API_KEY`. Although
+`.env.example` also lists `MODEL_NAME`, `TEMPERATURE`, and
+`SESSION_STORAGE_PATH`, `main.py` currently supplies the model and temperature
+directly, and the assistant uses a fixed API base URL.
+
+## Run
+
+With the virtual environment active, run:
 
 ```bash
 python main.py
 ```
 
-## Project Structure
-```
-doc_assistant_project/
-├── src/
-│   ├── schemas.py        # Pydantic models
-│   ├── retrieval.py      # Document retrieval
-│   ├── tools.py          # Agent tools
-│   ├── prompts.py        # Prompt templates
-│   ├── agent.py          # LangGraph workflow
-│   └── assistant.py      # Main agent
-├── sessions/             # Saved conversation sessions
-├── main.py               # Entry point
-├── requirements.txt      # Dependencies
-└── README.md             # This file
-```
+Enter a user ID when prompted, or press Enter to use `demo_user`. Then ask a
+question about the sample documents. The interactive commands are:
 
+| Command | Action |
+| --- | --- |
+| `/help` | Show command and example-query help |
+| `/docs` | List the documents currently available to the retriever |
+| `/quit` | Exit the assistant |
 
+Example questions:
 
-## Agent Architecture
+- “What is the total due on invoice INV-002?”
+- “Summarize contract CON-001.”
+- “Add up the invoice totals.”
+- “Find documents over $50,000.”
 
-The LangGraph agent follows this workflow:
+## Included sample documents
 
-![](./docs/langgraph_agent_architecture.png)
+The in-memory `SimulatedRetriever` loads these records when the application
+starts:
 
-## Implementation Tasks
+| ID | Type | Example content |
+| --- | --- | --- |
+| `INV-001` | Invoice | Acme Corporation consulting invoice |
+| `INV-002` | Invoice | TechStart Inc. enterprise license invoice |
+| `INV-003` | Invoice | Global Corp annual subscription invoice |
+| `CON-001` | Contract | Healthcare Partners service agreement |
+| `CLM-001` | Claim | Medical expense reimbursement claim |
 
-### 1. Schema Implementation (schemas.py)
+This data is defined in `src/retrieval.py`; restarting the program resets the
+retriever to these examples.
 
-#### Task 1.1: AnswerResponse Schema
-Create a Pydantic model for structured Q&A responses with the following fields:
-- `question`: The original user question (string)
-- `answer`: The generated answer (string)
-- `sources`: List of source document IDs used (list of strings)
-- `confidence`: Confidence score between 0 and 1 (float)
-- `timestamp`: When the response was generated (datetime)
+## How it works
 
-**Purpose**: This schema ensures consistent formatting of answers and tracks which documents were referenced.
+1. `src/agent.py` classifies the request and routes it to an agent.
+2. The selected agent uses the prompt and structured response schema for its
+   task.
+3. Available tools search documents, read a document, report collection
+   statistics, and calculate basic arithmetic expressions.
+4. The memory node summarizes the messages and records document IDs.
+5. LangGraph uses an in-memory checkpointer keyed by the session ID while the
+   process is running.
 
-#### Task 1.2: UserIntent Schema
-Create a Pydantic model for intent classification with these fields:
-- `intent_type`: The classified intent ("qa", "summarization", "calculation", or "unknown")
-- `confidence`: Confidence in classification (float between 0 and 1)
-- `reasoning`: Explanation for the classification (string)
+The graph is illustrated in
+[`docs/langgraph_agent_architecture.png`](docs/langgraph_agent_architecture.png).
 
-**Purpose**: This schema helps the system understand what type of request the user is making and route it to the appropriate agent.
+## Project layout
 
-### 2. Agent State Implementation (agent.py, assistant.py)
-
-#### Task 2.1: AgentState Properties
-The `AgentState` class is already defined, but you need to understand its structure:
-- `user_input`: Current user input
-- `messages`: Conversation messages with LangGraph message annotation
-- `intent`: Classified user intent
-- `next_step`: Next node to execute in the graph
-- `conversation_summary`: Summary of recent conversation
-- `active_documents`: Document IDs currently being discussed
-- `current_response`: The response being built
-- `tools_used`: List of tools used in current turn
-- `session_id` and `user_id`: Session management
-- `actions_taken`: List of agent nodes executed (to be added in Task 2.6)
-
-#### Task 2.2: Intent Classification Function
-Implement the `classify_intent` function:
-The `classify_intent` function is the first node in the graph. It just purpose to query the LLM, by providing both the user's input
-and message history (if any exists) and instruct the LLM to classify the intent so that graph can direct the request to the appropriate node.
-Some of the code for this function is already provided, but you need to complete it by doing the following steps:
-1. Configure the `llm` to use structured output with the `UserIntent` schema
-2. Create a prompt by calling the `get_intent_classification_prompt()` function from `prompts.py`.(HINT: you will need to call `format` on the returned value and pass in the `user_input` and `conversation_history`) 
-3. Make sure you read the prompt on `prompts.py` to understand what input variables it expects and what it is asking the LLM to return.
-4. Invoke the LLM with the prompt
-5. Implement conditional logic that sets the `next_step` based on the classified `intent`:
-   - "qa" --> "qa_agent"
-   - "summarization" --> "summarization_agent"
-   - "calculation" --> "calculation_agent"
-   - default --> "qa_agent"
-6. Update the state with `actions_taken = ["classify_intent"]` also include the new `intent` value and `next_step`, then return the updated state
-
-**Key concepts**: 
-- Use `llm.with_structured_output(UserIntent)` for structured responses
-- The function should return a state update with `actions_taken`, `intent`, and `next_step`
-
-#### Task 2.3: Calculation Agent Completion & Summarization Agent Completion
-Take a look at the code for the `qa_agent` node in `agent.py`. Pay attention to the parameters it takes, how it retrieves and constructs the prompt, and how it enforces structured output and how it updates the state object. 
-1. Implement the `calculation_agent` and `summarization_agent` functions to follow the same pattern by some function calls must be modified to accept values that are specific to the respective nodes.
-2. Be sure to use properly retrieve the prompt templates
-3. Take a look at the defined structured output schemas that correspond to each node and pass them to the appropriate function.
-4. Make sure to return an updated state object that includes all the same fields that are updated by the `qa_agent` node.
-
-
-#### Task 2.4: Complete the Update Memory Function
-Complete the `update_memory` function by doing the following steps:
-1. Extract the llm from the config parameter. (HINT: you may need to modify the function in order to do this)
-2. Pass in the correct schema to enforce structured output
-3. Updates the state with conversation_summary, active_documents, and next_step
-
-
-**Purpose**: This function maintains conversation context and tracks document references across turns.
-
-#### Task 2.5: Workflow Creation
-Complete the `create_workflow` function that:
-1. Adds all agent nodes (classify_intent, qa_agent, summarization_agent, calculation_agent, update_memory)
-2. In the `add_conditional_edges` method map each intent type to the corresponding agent node
-3. Adds edges from each agent to update_memory
-4. Fix the returned value so that is compiled with a checkpointer (see Task 2.6)
-
-**Graph Structure**:
-```
-classify_intent --> [qa_agent|summarization_agent|calculation_agent] --> update_memory --> END
+```text
+starter/
+├── main.py                 # Interactive command-line entry point
+├── requirements.txt        # Python dependencies
+├── .env.example            # Example local configuration
+├── .gitignore              # Excludes local credentials and runtime files
+├── docs/
+│   └── langgraph_agent_architecture.png
+└── src/
+    ├── agent.py             # Agent state, nodes, and LangGraph workflow
+    ├── assistant.py         # LLM, tools, and session orchestration
+    ├── prompts.py           # Intent, agent, and memory prompts
+    ├── retrieval.py         # In-memory sample documents and search
+    ├── schemas.py           # Pydantic response and state schemas
+    └── tools.py             # Calculator, search, reader, and statistics tools
 ```
 
-#### Task 2.6: State and Memory Persistence
+## Tests
 
-To practice using state reducers and persistent memory, extend `AgentState` and your workflow as follows:
+There is no automated test suite in the repository yet. The project has not
+been validated end to end against the configured language-model endpoint.
 
-1. Add `operator.add` reducer to the `actions_taken` field of the `AgentState` schema. It will accumulate the names of each agent node that runs during a turn. For example:
-2. (From Task 2.5) Import and use the InMemorySaver from the correct langgraph packagea and compile the workflow with a checkpointer using `InMemorySaver`. A checkpointer persists state across invocations, so your assistant will remember prior state even if you invoke the workflow multiple times. Modify `create_workflow` to call `workflow.compile(checkpointer=InMemorySaver())`. You will need to import `InMemorySaver`.
-3. In the `process_message` method in `assistant.py`, you must properly set the values of the `configurable` value within the `config` object. Specifically, you must set:
-   - The `thread_id` to the current_sessions.session_id
-   - The `llm` to the configured LLM instance
-   - The `tools`
+## Known limitations
 
-These additions will enable you to track the flow of the agent and experiment with persistent state. Refer back to the state management and memory demo exercises for examples.
-
-### 3. Prompt Implementation (prompts.py)
-
-#### Task 3.1: Chat Prompt Template
-Complete the `get_chat_prompt_template` function in `prompts.py`:
-1. Finishing implement the function so that it supports ALL the `intent_type` parameters which could be "qa", "summarization", or "calculation"
-2. Review prompts.py so you are aware of all the prompts in the file then make sure the `get_chat_prompt_template` the function sets the system_prompt to the correct value based on the `intent_type` parameter.
-> Make sure to use existing prompts already defined in the file (QA_SYSTEM_PROMPT, SUMMARIZATION_SYSTEM_PROMPT, CALCULATION_SYSTEM_PROMPT)
-
-**Purpose**: This provides context-aware prompts for different types of tasks.
-
-
-#### Task 3.2: Implement the CalculationSystemPrompt
-Implement the `CALCULATION_SYSTEM_PROMPT` constant in `prompts.py`:
-1. Write a system prompt for the calculation agent that instructs the LLM to:
-- Determine the document that must be retrieved and retrieve it using the document reader tool
-- Determine the mathematical expression to calculate based on the user's input
-- Use the calculator tool to perform the calculation
-2. Make sure the LLM uses the calculator tool for ALL calculations no matter how simple
-
-### 4. Tool Implementation (tools.py)
-
-#### Task 4.1: Calculator Tool
-Implement the `create_calculator_tool` function that:
-1. Uses the `@tool` decorator to create a LangChain tool
-2. Takes a mathematical expression as input
-3. Validates the expression for safety (only allow basic math operations)
-4. Evaluates the expression using Python's `eval()` function
-5. Logs the tool usage with the ToolLogger
-6. Returns a formatted result string
-7. Handles errors gracefully
-
-## Key Concepts for Success
-
-### 1. LangChain Tool Pattern
-Tools are functions decorated with `@tool` that can be called by LLMs. They must:
-- Have clear docstrings describing their purpose and parameters
-- Handle errors gracefully
-- Return string results
-- Log their usage for debugging
-
-### 2. LangGraph State Management
-The state flows through nodes and gets updated at each step. Key principles:
-- Always return the updated state from node functions
-- Use the state to pass information between nodes
-- The state persists conversation context and intermediate results
-
-### 3. Structured Output
-Use `llm.with_structured_output(YourSchema)` to get reliable, typed responses from LLMs instead of parsing strings.
-
-### 4. Conversation Memory
-The system maintains conversation via the InMemorySaver checkpointer:
-- Storing conversation messages with metadata
-- Tracking active documents
-- Summarizing conversations
-- Providing context to subsequent requests
-
-## Testing Your Implementation
-
-1. **Unit Testing**: Test individual functions with sample inputs
-2. **Integration Testing**: Test the complete workflow with various user inputs
-3. **Edge Cases**: Test error handling and edge cases
-
-## Common Pitfalls to Avoid
-
-1. **Missing Error Handling**: Always wrap external calls in try-catch blocks
-2. **Incorrect State Updates**: Ensure you're updating and returning the state correctly
-3. **Prompt Engineering**: Make sure your prompts are clear and specific
-4. **Tool Security**: Validate all inputs to prevent security issues
-
-## Expected Behavior
-
-After implementation, your assistant should be able to:
-- Classify user intents correctly
-- Search and retrieve relevant documents
-- Answer questions with proper source citations
-- Generate comprehensive summaries
-- Perform calculations on document data
-- Maintain conversation context across turns
-
-Good luck with your implementation! Remember to test thoroughly and refer to the existing working code for guidance on patterns and best practices.
+- **Intent classification needs a correction:** the classifier enables
+  `with_structured_output(UserIntent)` and then passes its result to a
+  `PydanticOutputParser`, which expects text rather than an already-parsed
+  model. This can stop requests before they reach an agent.
+- **Session save and resume need validation/fixes:** the assistant stores
+  LangChain message objects in its JSON session history, but its JSON encoder
+  only handles datetimes. Saving a completed turn can therefore fail, and the
+  in-memory LangGraph checkpointer itself does not survive a process restart.
+- **Some tool and display paths are incomplete:** the document search tool's
+  `"all"` option can fall through to query-based search, and the CLI checks for
+  `active_documents` even though the assistant returns the list as `sources`.
+- **Some schema defaults need cleanup:** several list/dictionary fields use
+  default factories that return the `list` or `dict` type instead of an empty
+  value.
+- **The retriever is a demonstration:** document search is keyword/metadata
+  based over hard-coded examples, not semantic search over user-provided files.
+- **The CLI currently uses fixed model settings and a fixed API base URL.**
+  The corresponding optional values in `.env.example` are not wired to the
+  entry point.
+- **No automated tests are included.** Add unit tests for retrieval, tools,
+  graph routing, and session persistence before extending or deploying the
+  application.

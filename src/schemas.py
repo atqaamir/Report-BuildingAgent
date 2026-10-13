@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any, Literal, TypedDict
 from datetime import datetime
 
 
+
 class DocumentChunk(BaseModel):
     """Represents a chunk of document content"""
     doc_id: str = Field(description="Document identifier")
@@ -11,14 +12,13 @@ class DocumentChunk(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=lambda: dict, description="Additional metadata")
     relevance_score: float = Field(default=0.0, description="Relevance score for retrieval")
 
-
-# TODO: Implement the AnswerResponse schema for structured Q&A responses.
-# This schema should include fields for the question, answer, sources, confidence, and timestamp.
-# Refer to README.md Task 1.1 for detailed field requirements.
 class AnswerResponse(BaseModel):
-    """Structured response for Q&A tasks - TO BE IMPLEMENTED"""
-    pass
-
+    """Structured response for Q&A tasks"""
+    question: str = Field(description="The original user question")
+    answer: str = Field(description="The generated answer")
+    sources: List[str] = Field(default_factory=lambda: list, description="List of source document IDs used")
+    confidence: float = Field(description="Confidence score between 0 and 1")
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class SummarizationResponse(BaseModel):
@@ -42,15 +42,15 @@ class CalculationResponse(BaseModel):
 class UpdateMemoryResponse(BaseModel):
     """Response after updating memory"""
     summary: str = Field(description="Summary of the conversation up to this point")
-    document_ids: List[str] = Field(default_factory=lambda: list, description="List of documents ids that are relevant to the users last message")
+    document_ids: List[str] = Field(default_factory=list, description="List of documents ids that are relevant to the users last message")
 
 
-# TODO: Implement the UserIntent schema for intent classification.
-# This schema should include fields for intent_type, confidence, and reasoning.
-# Refer to README.md Task 1.2 for detailed field requirements.
 class UserIntent(BaseModel):
     """User intent classification - TO BE IMPLEMENTED"""
-    pass
+    #### Task 1.2: UserIntent Schema
+    intent_type: str = Field(description="The classified intent ('qa', 'summarization', 'calculation', or 'unknown')")
+    confidence: float = Field(description="Confidence in classification (float between 0 and 1)")
+    reasoning: str = Field(description="Explanation for the classification")
 
 
 class SessionState(BaseModel):

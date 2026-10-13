@@ -1,48 +1,40 @@
+# Local credentials
+.env
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Virtual environments
+.venv/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
-.DS_Store
 
-# Virtual Environment
-bin/
-include/
-lib/
-lib64/
-share/
-pyvenv.cfg
+# Runtime data
+sessions/
+logs/
+*.log
 
-# IDE
+# IDE and operating system
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Project specific
-.env
-sessions/
-logs/
-*.log
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Testing
+# Tests and build artifacts
 .pytest_cache/
 .coverage
 htmlcov/
 *.cover
-
-# Distribution
 dist/
 build/
 *.egg-info/

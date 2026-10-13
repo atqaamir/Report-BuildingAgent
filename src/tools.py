@@ -64,10 +64,28 @@ class ToolLogger:
 # Refer to README.md Task 4.1 for detailed implementation requirements.
 def create_calculator_tool(logger: ToolLogger):
     """
-    Creates a calculator tool - TO BE IMPLEMENTED
+    Creates a calculator tool that safely evaluates mathematical expressions and logs its usage.
     """
-    # Your implementation here
-    pass
+    @tool
+    def calculator(expression: str) -> str:
+        import re
+        try:
+            # Validate the expression for safety
+            if not re.match(r'^[\d\s\+\-\*\/\.\(\)]+$', expression):
+                raise ValueError("Invalid characters in expression")
+
+            # Evaluate the expression
+            result = eval(expression)
+
+            # Log the tool usage
+            logger.log_tool_use("calculator", {"expression": expression}, result)
+
+            return f"Result: {result}"
+        except Exception as e:
+            logger.log_tool_use("calculator", {"expression": expression}, str(e))
+            return f"Error: {e}"
+
+    return calculator
 
 
 def create_document_search_tool(retriever, logger: ToolLogger):
