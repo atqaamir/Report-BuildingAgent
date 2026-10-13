@@ -1,15 +1,10 @@
-# DocDacity Document Assistant
+# Report-BuildingAgent
 
-DocDacity is a command-line assistant that answers questions about a small set
+Report-BuildingAgent is a command-line assistant that answers questions about a small set
 of sample financial and healthcare documents. It uses LangChain tools and a
 LangGraph workflow to route each request to a Q&A, summarization, or
 calculation agent.
 
-> **Project status:** This is a sample application, not a production document
-> platform. The included retriever searches five documents defined in code; it
-> does not ingest arbitrary files or use a vector database. See
-> [Known limitations](#known-limitations) before relying on session persistence
-> or running the full workflow.
 
 ## Requirements
 
